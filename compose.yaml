@@ -1,0 +1,10 @@
+services:
+  pulsewatch-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PULSEWATCH_MODEL_PATH: /app/artifacts/random_forest.joblib
+    volumes:
+      - ./artifacts:/app/artifacts
+    restart: unless-stopped
