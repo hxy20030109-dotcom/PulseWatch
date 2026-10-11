@@ -94,11 +94,13 @@ def dashboard() -> FileResponse:
 def monitoring_summary() -> dict:
     stream = read_report("stream_report.json")
     baseline = read_report("baseline_report.json")
+    delayed_quality = read_report("delayed_quality_report.json")
     if stream is None:
         return {
             "available": False,
             "message": "Run scripts/simulate_stream.py to create the first stream report.",
             "baseline_available": baseline is not None,
+            "delayed_quality_available": delayed_quality is not None,
         }
 
     stream_path = PROJECT_ROOT / "artifacts" / "stream_report.json"
@@ -150,6 +152,16 @@ def monitoring_summary() -> dict:
             "precision": random_forest.get("precision"),
             "recall": random_forest.get("recall"),
             "f2": random_forest.get("f2"),
+        },
+        "delayed_quality": {
+            "available": delayed_quality is not None,
+            "status": (delayed_quality or {}).get("status"),
+            "model_version": (delayed_quality or {}).get("model_version"),
+            "labeled_count": (delayed_quality or {}).get("labeled_count", 0),
+            "pending_label_count": (delayed_quality or {}).get("pending_label_count", 0),
+            "metrics": (delayed_quality or {}).get("metrics"),
+            "note": (delayed_quality or {}).get("note"),
+            "generated_at": (delayed_quality or {}).get("generated_at"),
         },
         "drift": drift,
         "batches": [

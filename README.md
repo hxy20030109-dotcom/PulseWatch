@@ -73,6 +73,20 @@ uv run python scripts/simulate_stream.py --data data/raw/ai4i2020.csv
 After the simulator finishes, refresh the dashboard to view the new report.
 The summary data is also available at `/monitoring/summary`.
 
+The simulator writes prediction events (record ID, score, threshold, model
+version, and batch) without labels to `artifacts/prediction_log.jsonl`. To
+simulate labels arriving later, run the separate join/evaluation step:
+
+```powershell
+uv run python scripts/evaluate_delayed_labels.py --predictions artifacts/prediction_log.jsonl --labels data/raw/ai4i2020.csv
+```
+
+This writes `artifacts/delayed_quality_report.json`; the dashboard then shows
+quality metrics only for prediction IDs matched to labels. In this public-data
+replay the labels already exist in the benchmark CSV, so the delay is simulated
+by keeping them out of the prediction stream until this separate step. It is
+not live production label ingestion.
+
 To see a controlled feature-drift alert, multiply torque and tool wear in the
 simulated stream. The injected-shift results are illustrative and are not
 quality measurements:
@@ -97,10 +111,13 @@ Implemented: reproducible data split, baseline training and threshold
 selection, FastAPI inference, feature drift and service metrics, stream
 simulator, dashboard, Docker recipe, and architecture/limitations guide.
 
-Not implemented: delayed-label ingestion and post-deployment quality tracking.
-The current project evaluates held-out baseline labels offline; simulated
-stream requests intentionally contain no labels. This distinction is visible
-in the dashboard and stream report.
+The delayed-label replay is implemented as a separate post-inference join and
+dashboard view. Production label ingestion, persistent online event storage,
+and post-deployment quality tracking remain out of scope. The simulated stream
+intentionally contains no labels; its quality report is generated later by
+joining prediction IDs to the benchmark labels.
+
+Run automated checks with `uv run pytest` and `uv run ruff check src scripts tests`.
 
 See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the project boundary and
 acceptance criteria.

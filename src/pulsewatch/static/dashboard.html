@@ -136,6 +136,16 @@
           <p class="quality-note">These quality metrics use held-out labels. The stream itself is label-free; its alerts and drift scores do not measure predictive quality.</p>
         </article>
       </section>
+      <section class="panel" style="margin-top: 14px">
+        <div class="panel-heading"><div><h2>Delayed-label quality</h2><p>Prediction events matched to labels by UDI after inference</p></div><span class="badge" id="delayed-status">Awaiting labels</span></div>
+        <div class="quality-strip">
+          <div class="quality-item"><span>Labeled predictions</span><strong id="labeled-count">—</strong></div>
+          <div class="quality-item"><span>Pending labels</span><strong id="pending-labels">—</strong></div>
+          <div class="quality-item"><span>PR-AUC</span><strong id="delayed-pr-auc">—</strong></div>
+          <div class="quality-item"><span>Recall · Precision · F2</span><strong id="delayed-summary">—</strong></div>
+        </div>
+        <p class="quality-note" id="delayed-note">Run the stream simulator, then run scripts/evaluate_delayed_labels.py to join its prediction log with labels.</p>
+      </section>
       <footer class="meta"><span>Report updated <time id="updated">—</time></span><span>Auto-refresh every 15 seconds · <a href="/docs" style="color:#8cb9b2">API docs</a></span></footer>
     </main>
     <script>
@@ -218,6 +228,7 @@
           }
           empty.style.display = "none";
           const run = data.run, latencyData = data.latency_ms, quality = data.quality || {};
+          const delayed = data.delayed_quality || {};
           $("run-status").textContent = run.failed_requests ? "Run completed · request errors" : "Run completed · healthy";
           $("records").textContent = number(run.stream_rows);
           $("mode").textContent = run.mode === "controlled_distribution_shift" ? `Controlled shift · ×${number(run.shift_factor, 1)}` : "Held-out stream · no injected shift";
@@ -235,6 +246,13 @@
           $("recall").textContent = percent(quality.recall);
           $("precision").textContent = percent(quality.precision);
           $("f2").textContent = number(quality.f2, 3);
+          $("delayed-status").textContent = delayed.available ? (delayed.status === "complete" ? "Labels complete" : "Partial labels") : "Awaiting labels";
+          $("labeled-count").textContent = number(delayed.labeled_count);
+          $("pending-labels").textContent = number(delayed.pending_label_count);
+          const delayedMetrics = delayed.metrics || {};
+          $("delayed-pr-auc").textContent = number(delayedMetrics.pr_auc, 3);
+          $("delayed-summary").textContent = delayed.metrics ? `${percent(delayedMetrics.recall)} · ${percent(delayedMetrics.precision)} · ${number(delayedMetrics.f2, 3)}` : "Waiting for both classes";
+          $("delayed-note").textContent = delayed.note || "Run the stream simulator, then run scripts/evaluate_delayed_labels.py to join its prediction log with labels.";
           $("interpretation").textContent = data.interpretation;
           $("updated").textContent = new Date(data.generated_at).toLocaleString();
           renderFeatures(data.drift); renderChart(data.batches);

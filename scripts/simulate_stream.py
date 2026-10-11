@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -27,6 +28,12 @@ def parse_args() -> argparse.Namespace:
         help="Multiply torque and tool wear in the simulated stream to demonstrate drift.",
     )
     parser.add_argument("--output", type=Path, default=Path("artifacts/stream_report.json"))
+    parser.add_argument(
+        "--predictions-output",
+        type=Path,
+        default=Path("artifacts/prediction_log.jsonl"),
+        help="Write successful predictions separately from labels for later evaluation.",
+    )
     return parser.parse_args()
 
 
@@ -94,12 +101,13 @@ def main() -> None:
     alerts = 0
     successes = 0
     errors = 0
+    prediction_records = []
     for start in range(0, len(stream_features), args.batch_size):
         stop = min(start + args.batch_size, len(stream_features))
         batch = stream_features.iloc[start:stop]
         batch_service_ms: list[float] = []
         batch_alerts = 0
-        for offset, (_, row) in enumerate(batch.iterrows()):
+        for offset, (row_index, row) in enumerate(batch.iterrows()):
             try:
                 result, client_ms = call_api(args.api_url, api_payload(row))
             except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
@@ -113,6 +121,17 @@ def main() -> None:
             alerts += bool(result["alert"])
             batch_alerts += bool(result["alert"])
             successes += 1
+            prediction_records.append(
+                {
+                    "UDI": int(stream.loc[row_index, "UDI"]),
+                    "failure_risk": float(result["failure_risk"]),
+                    "alert": bool(result["alert"]),
+                    "threshold": float(result["threshold"]),
+                    "model_version": str(result["model_version"]),
+                    "batch_index": len(batch_reports),
+                    "predicted_at": datetime.now(UTC).isoformat(),
+                }
+            )
 
         batch_drift = drift_report(reference_features, batch)
         batch_reports.append(
@@ -160,8 +179,13 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    args.predictions_output.parent.mkdir(parents=True, exist_ok=True)
+    args.predictions_output.write_text(
+        "".join(json.dumps(record) + "\n" for record in prediction_records), encoding="utf-8"
+    )
     print(json.dumps(report, indent=2))
     print(f"saved stream report: {args.output.resolve()}")
+    print(f"saved prediction log: {args.predictions_output.resolve()}")
 
 
 if __name__ == "__main__":

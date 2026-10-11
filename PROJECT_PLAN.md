@@ -50,6 +50,8 @@ tabular ML workflow and deployable inference service.
 - Log model version, request outcome, latency, and risk score without storing
   unnecessary personal data.
 - Simulate batches and controlled feature-distribution shifts.
+- Save label-free prediction events and separately join labels later by row ID
+  to measure post-prediction quality on the benchmark replay.
 - Report drift separately from quality metrics, which require ground-truth
   labels.
 - Package a local demo with Docker and document one-command startup.
@@ -63,6 +65,8 @@ tabular ML workflow and deployable inference service.
 - The API rejects malformed input and returns model/version metadata.
 - A demo shows a normal batch and a controlled shifted batch, with drift
   alerts clearly distinguished from proven performance degradation.
+- Prediction events can be matched to later-available labels, with incomplete
+  label coverage shown separately from quality metrics.
 - README documents provenance, limitations, architecture, and reproducibility.
 
 ## Out of scope
